@@ -1,0 +1,41 @@
+name: Deploy
+
+# 触发条件：推送到 main 分支时自动执行
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 拉取代码（在 GitHub Actions 机器上）
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. 把 web 应用代码传到服务器（服务器无需连 GitHub）
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          source: "app/web/"
+          target: "~/cloudops-platform/app/web"
+
+      # 3. SSH 进服务器：重建镜像并重启容器
+      - name: Rebuild and run on server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: root
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ~/cloudops-platform/app/web
+            docker build -t cloudops-web .
+            docker stop web || true
+            docker rm web || true
+            docker run -d --name web --restart unless-stopped --memory=256m -p 5000:5000 cloudops-web
+            echo "部署完成，等待健康检查..."
+            sleep 5
+            curl -f http://localhost:5000/api/health && echo "OK"
