@@ -14,6 +14,8 @@ jobs:
         uses: actions/checkout@v4
 
       # 2. 把 web 应用代码传到服务器（服务器无需连 GitHub）
+      # 注意：source 是 "app/web/"，target 必须是仓库根目录，
+      # 这样解压后才落在 ~/cloudops-platform/app/web/（否则会嵌套成 app/web/app/web/）
       - name: Copy files to server
         uses: appleboy/scp-action@v0.1.4
         with:
@@ -21,9 +23,9 @@ jobs:
           username: root
           key: ${{ secrets.SSH_KEY }}
           source: "app/web/"
-          target: "~/cloudops-platform/app/web"
+          target: "~/cloudops-platform"
 
-      # 3. SSH 进服务器：重建镜像并重启容器
+      # 3. SSH 进服务器：验证代码 → 重建镜像 → 重启容器
       - name: Rebuild and run on server
         uses: appleboy/ssh-action@v1.0.0
         with:
@@ -32,6 +34,8 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/cloudops-platform/app/web
+            echo "服务器上的版本号："
+            grep version app.py
             docker build -t cloudops-web .
             docker stop web || true
             docker rm web || true
