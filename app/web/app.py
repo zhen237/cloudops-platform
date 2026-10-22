@@ -10,7 +10,7 @@ app = Flask(__name__)
 def index():
     return jsonify({
         "service": "cloudops-platform",
-        "version": "0.1.0",
+        "version": "0.2.0",
         "status": "running",
         "timestamp": int(time.time())
     })
